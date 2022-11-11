@@ -1,0 +1,270 @@
+*----------------------------------------------------------------------*
+* INCLUDE ZI_ALVFORM *
+*----------------------------------------------------------------------*
+************************************************************************
+**** pedido IGUAÇU
+**** PROGRAMA: Include form's para listas ALV *
+**** AUTOR:    Ricardo Fachin *
+**** DATA:     13/10/2003 *
+************************************************************************
+
+*----------------------------------------------------------------------*
+*** Padrão para nomenclatura
+*----------------------------------------------------------------------*
+
+*Variáveis locais
+*Tabelas internas:  ti_<nome>
+*Variávei gerais:   vp_<nome>
+*Variáveis de subrotinas
+
+*form carrega_confirmacoes tables ft_<nome> structure mtreesnode
+* using fp_<nome>
+* changing fp_<nome>.
+*O fp_ serve para identificar que é uma variável de subrotina....
+
+*----------------------------------------------------------------------*
+*** Types
+*----------------------------------------------------------------------*
+TYPE-POOLS slis.
+
+* RVC 02.08.04
+INCLUDE z_rel_alv.
+* F RVC 02.08.04
+
+*----------------------------------------------------------------------*
+*** Tabelas internas
+*----------------------------------------------------------------------*
+DATA: ti_fieldcat TYPE slis_t_fieldcat_alv WITH HEADER LINE,
+      ti_sort     TYPE slis_t_sortinfo_alv WITH HEADER LINE,
+      ti_events   TYPE slis_t_event        WITH HEADER LINE.
+
+*----------------------------------------------------------------------*
+*** Rotinas para listas ALV
+*----------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Form GET_EVENTS
+*&---------------------------------------------------------------------*
+FORM get_events USING p_events    TYPE slis_formname
+                      p_list_type TYPE slis_list_type.
+  CALL FUNCTION 'REUSE_ALV_EVENTS_GET'
+    EXPORTING
+      i_list_type     = p_list_type
+    IMPORTING
+      et_events       = ti_events[]
+    EXCEPTIONS
+      list_type_wrong = 1
+      OTHERS          = 2.
+  IF NOT sy-subrc IS INITIAL.
+    CLEAR ti_events. FREE ti_events.
+  ENDIF.
+  READ TABLE ti_events WITH KEY name = p_events.
+  IF sy-subrc IS INITIAL.
+    MOVE p_events TO ti_events-form.
+    APPEND ti_events.
+  ENDIF.
+ENDFORM. " GET_EVENTS
+
+*&---------------------------------------------------------------------*
+*& Form VARIANT_DEFAULT_GET
+*&---------------------------------------------------------------------*
+FORM variant_default_get
+        USING p_repid      TYPE sy-repid
+     CHANGING p_variant    TYPE disvariant-variant
+              p_wa_variant TYPE disvariant.                 "#EC CALLED
+  CHECK p_variant IS INITIAL.
+
+  p_wa_variant-report = p_repid.
+
+  CALL FUNCTION 'REUSE_ALV_VARIANT_DEFAULT_GET'
+    EXPORTING
+      i_save        = 'A'
+    CHANGING
+      cs_variant    = p_wa_variant
+    EXCEPTIONS
+      wrong_input   = 1
+      not_found     = 2
+      program_error = 3
+      OTHERS        = 4.
+  IF sy-subrc EQ 0.
+    p_variant = p_wa_variant-variant.
+  ENDIF.
+ENDFORM. " VARIANT_DEFAULT_GET
+
+*---------------------------------------------------------------------*
+* Form VALUE_REQUEST_VARIANT
+*---------------------------------------------------------------------*
+FORM value_request_variant
+        USING p_repid      TYPE sy-repid
+     CHANGING p_variant    TYPE disvariant-variant
+              p_wa_variant TYPE disvariant.                 "#EC CALLED
+  p_wa_variant-report = p_repid.
+
+  CALL FUNCTION 'REUSE_ALV_VARIANT_F4'
+    EXPORTING
+      is_variant    = p_wa_variant
+      i_save        = 'A'
+    IMPORTING
+      es_variant    = p_wa_variant
+    EXCEPTIONS
+      not_found     = 1
+      program_error = 2
+      OTHERS        = 3.
+  IF sy-subrc EQ 0.
+    p_variant = p_wa_variant-variant.
+  ENDIF.
+ENDFORM. " VALUE_REQUEST_VARIANT
+
+*&---------------------------------------------------------------------*
+*&      Form  check_variant_existence
+*&---------------------------------------------------------------------*
+* VERIFICA SE A VARIANTE DE EXIBIÇÃO (LAYOUT) INFORMADA EXISTE
+*----------------------------------------------------------------------*
+* --> P_SAVE
+* <-- P_WA_VARIANT
+*----------------------------------------------------------------------*
+FORM check_variant_existence
+        USING p_repid      TYPE sy-repid
+              p_variant    TYPE disvariant-variant
+              p_save       TYPE char1
+     CHANGING p_wa_variant TYPE disvariant
+              p_retorno    TYPE sy-subrc.
+
+  p_retorno = 0.
+
+  CHECK NOT p_variant IS INITIAL.
+
+  p_wa_variant-report  = p_repid.
+  p_wa_variant-variant = p_variant.
+
+  CALL FUNCTION 'REUSE_ALV_VARIANT_EXISTENCE'
+    EXPORTING
+      i_save        = p_save
+    CHANGING
+      cs_variant    = p_wa_variant
+    EXCEPTIONS
+      wrong_input   = 1
+      not_found     = 2
+      program_error = 3
+      OTHERS        = 4.
+  IF NOT sy-subrc IS INITIAL.
+    p_retorno = sy-subrc.
+  ENDIF.
+ENDFORM.                    " check_variant_existence
+
+*&---------------------------------------------------------------------*
+*& Form MONTA_ORDENACAO
+*&---------------------------------------------------------------------*
+FORM monta_ordenacao USING
+     p_spos      TYPE slis_sortinfo_alv-spos
+     p_fieldname TYPE slis_sortinfo_alv-fieldname
+     p_ordem     TYPE c
+     p_subtot    TYPE slis_sortinfo_alv-subtot
+* Para quebrar a página, preencha [P_GROUP] com '*'
+     p_group     TYPE slis_sortinfo_alv-group
+     p_expa      TYPE slis_sortinfo_alv-expa.
+
+  CLEAR ti_sort.
+
+  ti_sort-spos      = p_spos.
+  ti_sort-fieldname = p_fieldname.
+  ti_sort-subtot    = p_subtot.
+  ti_sort-group     = p_group.
+  ti_sort-expa      = p_expa.
+  IF p_ordem EQ 'D'.
+    ti_sort-down = 'X'.
+  ELSE.
+    ti_sort-up = 'X'.
+  ENDIF.
+  APPEND ti_sort.
+ENDFORM. " MONTA_ORDENACAO
+
+*&---------------------------------------------------------------------*
+*& Form MONTA_CATALOGO
+*&---------------------------------------------------------------------*
+FORM monta_catalogo USING
+     p_row_pos       TYPE slis_fieldcat_alv-row_pos
+     p_col_pos       TYPE slis_fieldcat_alv-col_pos
+     p_key           TYPE slis_fieldcat_alv-key
+     p_fieldname     TYPE slis_fieldcat_alv-fieldname
+     p_tabname       TYPE slis_fieldcat_alv-tabname
+     p_ref_tabname   TYPE slis_fieldcat_alv-ref_tabname
+     p_ref_fieldname TYPE slis_fieldcat_alv-ref_fieldname
+     p_ctabname      TYPE slis_fieldcat_alv-ctabname
+     p_cfieldname    TYPE slis_fieldcat_alv-cfieldname
+     p_currency      TYPE slis_fieldcat_alv-currency
+     p_do_sum        TYPE slis_fieldcat_alv-do_sum
+     p_no_out        TYPE slis_fieldcat_alv-no_out
+     p_seltext_m     TYPE slis_fieldcat_alv-seltext_m
+     p_just          TYPE slis_fieldcat_alv-just "(R)ight (L)eft (C)ent
+     p_datatype      TYPE slis_fieldcat_alv-datatype
+     p_inttype       TYPE slis_fieldcat_alv-inttype
+     p_hotspot       TYPE slis_fieldcat_alv-hotspot
+     p_outputlen     TYPE slis_fieldcat_alv-outputlen
+     p_decimals_out  TYPE slis_fieldcat_alv-decimals_out.
+
+*--------------------------------------------------------------------*
+  CLEAR ti_fieldcat.
+
+  ti_fieldcat-row_pos       = p_row_pos.
+  ti_fieldcat-col_pos       = p_col_pos.
+  ti_fieldcat-key           = p_key.
+  ti_fieldcat-fieldname     = p_fieldname.
+  ti_fieldcat-tabname       = p_tabname.
+  ti_fieldcat-ref_tabname   = p_ref_tabname.
+  ti_fieldcat-ref_fieldname = p_ref_fieldname.
+  ti_fieldcat-ctabname      = p_ctabname.
+  ti_fieldcat-cfieldname    = p_cfieldname.
+  ti_fieldcat-currency      = p_currency.
+  ti_fieldcat-do_sum        = p_do_sum.
+  ti_fieldcat-no_out        = p_no_out.
+  ti_fieldcat-seltext_s     = p_seltext_m.
+  ti_fieldcat-seltext_m     = p_seltext_m.
+  ti_fieldcat-seltext_l     = p_seltext_m.
+  ti_fieldcat-just          = p_just.
+  ti_fieldcat-inttype       = p_inttype.
+  ti_fieldcat-hotspot       = p_hotspot.
+  ti_fieldcat-outputlen     = p_outputlen.
+  ti_fieldcat-decimals_out  = p_decimals_out.
+
+  "--------------------------------------------------------------------"
+  IF p_datatype EQ 'ICON'.
+
+    ti_fieldcat-icon      = 'X'.
+    ti_fieldcat-outputlen = '3'.
+
+  ELSEIF p_datatype EQ 'BOX'.
+    ti_fieldcat-checkbox  = 'X'.
+    ti_fieldcat-input     = 'X'.
+    ti_fieldcat-outputlen = '2'.
+    ti_fieldcat-just      = 'L'.
+    ti_fieldcat-edit      = 'X'.
+
+  ELSEIF p_datatype EQ 'I/O'.
+    ti_fieldcat-input     = 'X'.
+    ti_fieldcat-edit      = 'X'. " P/edição campo ALV_GRID-RVP 14.06.06
+
+  ELSE.
+    ti_fieldcat-datatype  = p_datatype.
+
+  ENDIF.  " IF p_datatype EQ 'ICON'.
+
+  "--------------------------------------------------------------------"
+  IF p_seltext_m IS NOT INITIAL.
+    ti_fieldcat-ddictxt = 'M'.
+  ENDIF.
+
+*ALTER[ ALJ 20.05.2013 Nota: 200222240
+*--------------------------------------------------------------------*
+* incluido este campo porque, quando o conteudo de um campo
+* era minusculo, o filtro não funcionava, porque no filtro o argumento
+* de pesquisa era convertido para maiusculo, o que fizia com que o
+* registro não fosse selecionado.
+
+  ti_fieldcat-lowercase = 'X'.
+*--------------------------------------------------------------------*
+*ALTER] ALJ 20.05.2013 Nota: 200222240
+
+  APPEND ti_fieldcat.
+
+ENDFORM. " MONTA_CATALOGO

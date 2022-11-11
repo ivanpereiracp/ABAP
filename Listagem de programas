@@ -1,0 +1,1008 @@
+REPORT zprog MESSAGE-ID zabap.
+
+************************************************************************
+* Autor      : Ivan Pereira
+* Data       : 23/09/2021
+* Objetivo   : Programas disponíveis
+* Nota       :
+* Solicitante: Ivan Pereira - TI
+*************************************************************************
+
+*======================================================================
+* Tabelas
+*======================================================================
+TABLES: adrc, tadir, trdir, dd07t, dd02l.
+
+*======================================================================
+* Includes
+*======================================================================
+INCLUDE zi_alvform.
+
+*======================================================================
+* Tipos
+*======================================================================
+
+*Tabela final para geração do ALV
+TYPES: BEGIN OF tp_imprimir,
+         obj_name   TYPE tadir-obj_name,              " Nome do programa
+         srcsystem  TYPE tadir-srcsystem,             " Sistema de origem do objeto
+         author     TYPE tadir-author,                " Criador
+         devclass   TYPE tadir-devclass,              " Pacote
+         masterlang TYPE tadir-masterlang,            " Idioma original
+         subc       TYPE trdir-subc,                  " Tipo do programa
+         appl       TYPE trdir-appl,                  " Aplicação
+         cdat       TYPE trdir-cdat,                  " Data de criação
+         unam       TYPE trdir-unam,                  " Nome do último modificador
+         udat       TYPE trdir-udat,                  " Data da última modificação
+         text       TYPE trdirt-text,                 " Título do programa
+         ddtext     TYPE dd07t-ddtext,                " Nome do tipo de aplicação
+         atext      TYPE taplt-atext,                 " Texto aplicação
+         tcode      TYPE tstc-tcode,                  " Código de transação
+         ttext      TYPE tstcv-ttext,                 " Texto da transação
+         dypno      TYPE tstc-dypno,                  " Nº tela
+         created_on TYPE tadir-created_on,            " Data de criação da transação
+         icone(4)   TYPE c,                           " Ícone.
+         reporttype TYPE srepovari-reporttype,        " Categoria de um report
+         report     TYPE srepovari-report,            " Nome do programa ABAP
+         extdreport TYPE srepovari-extdreport,        " Nome de programa ampliado
+         variant    TYPE srepovari-variant,           " Nome da variante
+         usergroup  TYPE srt_query-usergroup,         " Nome de um grupo de usuários
+         workspace  TYPE srt_query-workspace,         " ID de uma área de trabalho
+         query      TYPE srt_query-query,             " Nome da query
+         progname   TYPE aqadef-pgname,               " Nome de programa
+         tabname    TYPE dd02l-tabname,               " Nome da tabela
+         tabclass   TYPE dd02l-tabclass,              " Categoria de tabela
+         as4user    TYPE dd02l-as4user,               " Autor da última modificação
+         as4date    TYPE dd02l-as4date,               " Data da última modificação
+         as4time    TYPE dd02l-as4time,               " Hora da última modificação
+         contflag   TYPE dd02l-contflag,              " Classe de entrega
+         contador   TYPE sy-dbcnt,                    " Contador de registros
+       END OF tp_imprimir.
+
+*Tabela para movimentos do estoque IM
+TYPES: BEGIN OF tp_prog,
+         obj_name   TYPE tadir-obj_name,              " Nome do programa
+         srcsystem  TYPE tadir-srcsystem,             " Sistema de origem do objeto
+         author     TYPE tadir-author,                " Criador
+         devclass   TYPE tadir-devclass,              " Pacote
+         masterlang TYPE tadir-masterlang,            " Idioma original
+         subc       TYPE trdir-subc,                  " Tipo do programa
+         appl       TYPE trdir-appl,                  " Aplicação
+         cdat       TYPE trdir-cdat,                  " Data de criação
+         unam       TYPE trdir-unam,                  " Nome do último modificador
+         udat       TYPE trdir-udat,                  " Data da última modificação
+         text       TYPE trdirt-text,                 " Título do programa
+         ddtext     TYPE dd07t-ddtext,                " Nome do tipo de aplicação
+         atext      TYPE taplt-atext,                 " Texto aplicação
+         tcode      TYPE tstc-tcode,                  " Código de transação
+         ttext      TYPE tstcv-ttext,                 " Texto da transação
+         dypno      TYPE tstc-dypno,                  " Nº tela
+         created_on TYPE tadir-created_on,            " Data de criação da transação
+         icone(4)   TYPE c,                           " Ícone.
+         reporttype TYPE srepovari-reporttype,        " Categoria de um report
+         report     TYPE srepovari-report,            " Nome do programa ABAP
+         extdreport TYPE srepovari-extdreport,        " Nome de programa ampliado
+         variant    TYPE srepovari-variant,           " Nome da variante
+         usergroup  TYPE srt_query-usergroup,         " Nome de um grupo de usuários
+         workspace  TYPE srt_query-workspace,         " ID de uma área de trabalho
+         query      TYPE srt_query-query,             " Nome da query
+         progname   TYPE aqadef-pgname,               " Nome de programa
+         tabname    TYPE dd02l-tabname,               " Nome da tabela
+         tabclass   TYPE dd02l-tabclass,              " Categoria de tabela
+         as4user    TYPE dd02l-as4user,               " Autor da última modificação
+         as4date    TYPE dd02l-as4date,               " Data da última modificação
+         as4time    TYPE dd02l-as4time,               " Hora da última modificação
+         contflag   TYPE dd02l-contflag,              " Classe de entrega
+         contador   TYPE sy-dbcnt,                    " Contador de registros
+       END OF tp_prog.
+
+*======================================================================
+* Tabelas / Work Áreas
+*======================================================================
+DATA: ti_imprimir TYPE STANDARD TABLE OF tp_imprimir WITH HEADER LINE,
+      ti_prog     TYPE STANDARD TABLE OF tp_prog WITH HEADER LINE.
+
+*----------------------------------------------------------------------*
+* Áreas de trabalho
+*----------------------------------------------------------------------*
+DATA:           wa_layout   TYPE slis_layout_alv,
+                wa_variant  TYPE disvariant,
+                wa_prog     TYPE tp_prog,
+                wa_fieldcat TYPE slis_fieldcat_alv,
+                wa_imprimir TYPE tp_imprimir.
+
+*======================================================================
+* Variáveis
+*======================================================================
+DATA: g_repid      TYPE sy-repid,
+      vg_index     TYPE sy-tabix,
+      vp_campo(12) TYPE c,
+      vp_lines     TYPE i.
+
+DATA:v_help_info LIKE help_info,n TYPE i,
+     it_dyselect LIKE TABLE OF dselc WITH HEADER LINE,
+     it_dyvaltab LIKE TABLE OF dval WITH HEADER LINE.
+
+DATA: vp_contador   TYPE sy-dbcnt,
+      vp_tabname    TYPE dd02l-tabname,
+      vp_direita(4) TYPE c.
+
+*======================================================================
+* Parâmetros de Seleção
+*======================================================================
+SELECTION-SCREEN BEGIN OF BLOCK param1 WITH FRAME TITLE text-000.
+
+SELECTION-SCREEN SKIP.
+PARAMETERS: p_prog  RADIOBUTTON GROUP rad1 DEFAULT 'X' USER-COMMAND rad,
+            p_incl  RADIOBUTTON GROUP rad1,
+            p_query RADIOBUTTON GROUP rad1,
+            p_table RADIOBUTTON GROUP rad1.
+
+*            p_outros RADIOBUTTON GROUP rad1.
+SELECTION-SCREEN END OF BLOCK param1.
+*SELECTION-SCREEN ULINE.
+SELECTION-SCREEN BEGIN OF BLOCK param2 WITH FRAME TITLE text-002.
+
+SELECT-OPTIONS: s_nam FOR trdir-name MODIF ID prg,
+                s_author FOR tadir-author MODIF ID prg,
+                s_devcl FOR tadir-devclass MODIF ID prg,
+                s_table FOR dd02l-tabname MODIF ID tbl,
+                s_tabcl FOR dd02l-tabclass MODIF ID tbl.
+
+PARAMETERS: c_ignl  AS CHECKBOX DEFAULT '' MODIF ID opt, " Para ignorar objetos locais
+            c_objl  AS CHECKBOX DEFAULT '' MODIF ID opt, " Mostrar apenas objetos locais
+            c_tcode AS CHECKBOX DEFAULT '' MODIF ID opt, " Não Mostrar transações.
+            c_cont  AS CHECKBOX DEFAULT '' MODIF ID tbl.  " Contador de registros das tabelas.
+
+SELECTION-SCREEN END OF BLOCK param2.
+
+SELECTION-SCREEN BEGIN OF BLOCK bloco2 WITH FRAME TITLE text-001.
+PARAMETERS        p_varia TYPE disvariant-variant.
+
+SELECTION-SCREEN: END   OF BLOCK bloco2.
+
+AT SELECTION-SCREEN.
+  IF sy-ucomm = 'DOCU'.   " Chamar a documentação do programa
+    CALL FUNCTION 'DSYS_SHOW_FOR_F1HELP'
+      EXPORTING
+        dokclass         = 'RE'
+        doklangu         = sy-langu
+        dokname          = sy-repid
+*       DOKTITLE         = ' '
+*       HOMETEXT         = ' '
+*       OUTLINE          = ' '
+*       VIEWNAME         = 'STANDARD'
+*       Z_ORIGINAL_OUTLINE       = ' '
+*       CALLED_FROM_SO70 = ' '
+        short_text       = 'X'
+      EXCEPTIONS
+        class_unknown    = 1
+        object_not_found = 2
+        OTHERS           = 3.
+    IF sy-subrc <> 0.
+* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+  ENDIF.
+
+AT SELECTION-SCREEN OUTPUT.
+
+  LOOP AT SCREEN.
+    IF p_prog EQ 'X'.
+      c_tcode = ''.
+      IF screen-group1 EQ 'PRG' OR screen-group1 EQ 'OPT'.
+        screen-input = 1.
+        screen-active = 1.
+        MODIFY SCREEN.
+      ELSEIF screen-group1 EQ 'TBL'.
+        screen-input = 0.
+        screen-active = 0.
+        MODIFY SCREEN.
+      ENDIF.
+    ELSEIF  p_incl EQ 'X'.
+      c_tcode = 'X'.
+      IF screen-group1 EQ 'PRG' OR screen-group1 EQ 'OPT'.
+        screen-input = 1.
+        screen-active = 1.
+        MODIFY SCREEN.
+      ELSEIF screen-group1 EQ 'TBL'.
+        screen-input = 0.
+        screen-active = 0.
+        MODIFY SCREEN.
+      ENDIF.
+    ELSEIF  p_query EQ 'X'.
+      c_tcode = ''.
+      IF screen-group1 EQ 'PRG'.
+        screen-input = 1.
+        screen-active = 1.
+        MODIFY SCREEN.
+      ELSEIF screen-group1 EQ 'TBL' OR screen-group1 EQ 'OPT'.
+        screen-input = 0.
+        screen-active = 0.
+        MODIFY SCREEN.
+      ENDIF.
+    ELSEIF  p_table EQ 'X'.
+      c_tcode = ''.
+      IF screen-group1 EQ 'TBL'.
+        screen-input = 1.
+        screen-active = 1.
+        MODIFY SCREEN.
+      ELSEIF screen-group1 EQ 'PRG' OR screen-group1 EQ 'OPT'.
+        screen-input = 0.
+        screen-active = 0.
+        MODIFY SCREEN.
+
+      ENDIF.
+
+    ENDIF.
+  ENDLOOP.
+
+*----------------------------------------------------------------------*
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_varia.
+*----------------------------------------------------------------------*
+  PERFORM alv_f4.
+
+INITIALIZATION.
+
+* Chama form que verifica se possui variante default
+  PERFORM variant_default_get USING sy-repid
+                           CHANGING p_varia  wa_variant.
+
+
+  PERFORM layout_init CHANGING wa_layout.
+  PERFORM alv_init.
+
+START-OF-SELECTION.
+
+  IF c_objl EQ 'X' AND c_ignl EQ 'X'.
+    MESSAGE i000 WITH 'Desmarque uma das opções de objeto local'(M01).
+  ELSE.
+    PERFORM seleciona_empresa.
+    PERFORM seleciona_dados.
+
+    IF NOT ti_imprimir[] IS INITIAL.
+      PERFORM imprime_alv.
+    ELSE.
+      MESSAGE i000 WITH text-121.
+    ENDIF.
+  ENDIF.
+
+END-OF-SELECTION.
+
+FORM imprime_alv .
+
+  PERFORM monta_alv.
+  PERFORM imprimir_alv.
+
+ENDFORM.                    " IMPRIME_ALV
+
+FORM imprimir_alv .
+
+*----------------------------------------------------------------------*
+* Áreas de Trabalho Locais
+*----------------------------------------------------------------------*
+  DATA: wa_layout  TYPE slis_layout_alv, " Configuração de layout
+        wa_isprint TYPE slis_print_alv.  " Configuração de impressora
+
+*----------------------------------------------------------------------*
+* Variáveis Locais
+*----------------------------------------------------------------------*
+
+  MOVE:
+* Print
+    'X'         TO wa_isprint-no_print_selinfos,
+    'X'         TO wa_isprint-no_print_listinfos,
+    'X'         TO wa_isprint-no_coverpage,
+
+* Layout
+    'X'         TO wa_layout-zebra,
+    'X'         TO wa_layout-colwidth_optimize,
+    'X'         TO wa_layout-detail_popup,
+    'X'         TO wa_layout-colwidth_optimize,
+    ' '         TO wa_layout-no_totalline,
+    'CELLCOLOR' TO  wa_layout-coltab_fieldname,  "CTAB_FNAME
+
+* Sums
+    ' '      TO wa_layout-numc_sum.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program       = sy-cprog
+      i_callback_pf_status_set = 'PF_STATUS'
+      i_callback_user_command  = 'USER_COMMAND'
+      i_callback_top_of_page   = 'TOP_OF_PAGE'
+      is_layout                = wa_layout
+      it_fieldcat              = ti_fieldcat[]
+      it_sort                  = ti_sort[]
+      i_save                   = 'A'
+      it_events                = ti_events[]
+      is_print                 = wa_isprint
+    TABLES
+      t_outtab                 = ti_imprimir[]
+    EXCEPTIONS
+      program_error            = 1
+      OTHERS                   = 2.
+
+  IF NOT sy-subrc IS INITIAL.
+    MESSAGE i000(zabap) WITH text-002 'REUSE_ALV_GRID_DISPLAY'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.                    " IMPRIMIR_ALV
+
+FORM  pf_status USING f_excode TYPE slis_t_extab.           "#EC CALLED
+
+* COPIAR SEMPRE O PF-STATUS DO PROGRAMA: SAPLSLVC_FULLSCREEN
+* STATUS: STANDARD_FULLSCREEN
+*  DATA: lc_pfstat(20) VALUE 'STANDARD_FULLSCREEN'.
+
+  SET PF-STATUS 'PF_STATUS'.
+
+ENDFORM.                    "pf_status
+
+FORM top_of_page.                                           "#EC CALLED
+
+* Tabelas Internas e Áreas de Trabalho Locais
+  DATA:
+    lt_list_top_of_page TYPE slis_t_listheader, " Dados p/cabeçalho ALV
+    lw_line             TYPE slis_listheader.   " Dados p/cabeçalho ALV
+
+* Variáveis Locais
+  DATA:
+    vl_trans_usu(20) TYPE c,        " Nome programa e usuário
+    vl_data(20)      TYPE c,        " Data extração relatório
+    vp_hora(8)       TYPE c,        " Hora extração relatório
+    vl_data_hora(22) TYPE c,        " Data/Hora extração relatório
+    vl_data_de(20)   TYPE c,        " Data criação do lote - de
+    vl_data_ate(20)  TYPE c,        " Data criação do lote - para
+    vl_linhas        TYPE p.        " Quantidade de linhas da tabela
+* Constantes Locais
+  CONSTANTS:
+    cl_mask_date(10) TYPE c VALUE '__.__.____', " Máscara data
+    cl_mask_time(8)  TYPE c VALUE '__:__:__'.   " Máscara hora
+
+
+  CLEAR lt_list_top_of_page. FREE lt_list_top_of_page.
+
+* Título do Relatório
+  CLEAR lw_line.
+  lw_line-typ  = 'H'.
+  lw_line-info   = sy-title.
+  APPEND lw_line TO lt_list_top_of_page.
+
+* Empresa
+  CLEAR lw_line.
+  lw_line-typ  = 'S'.
+  lw_line-key  = text-011.
+  lw_line-info = adrc-name1.
+  APPEND lw_line TO lt_list_top_of_page.
+
+  WRITE: sy-datum USING EDIT MASK cl_mask_date TO vl_data,
+         sy-uzeit USING EDIT MASK cl_mask_time TO vp_hora.
+
+  CONCATENATE: sy-repid '/' sy-uname INTO vl_trans_usu
+               SEPARATED BY space,
+               vl_data  '-' vp_hora  INTO vl_data_hora
+               SEPARATED BY space.
+
+* Nome do relatório, usuário, data e hora de execução
+  lw_line-key  = text-012.
+  CONCATENATE vl_trans_usu vl_data_hora
+         INTO lw_line-info SEPARATED BY space.
+  APPEND lw_line TO lt_list_top_of_page.
+
+* Quantidade de registros encontrados
+  DESCRIBE TABLE ti_imprimir LINES vl_linhas.
+  lw_line-key = 'Registros:'(r01).
+  lw_line-info = vl_linhas.
+  APPEND lw_line TO lt_list_top_of_page.
+
+  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'
+    EXPORTING
+      it_list_commentary = lt_list_top_of_page.
+*      i_logo             = 'LOGO_CAFE1'.
+ENDFORM.                    " top_of_page
+
+FORM seleciona_empresa.
+* Obtém nome empresa (utilizado pelo cabeçalho padrão)
+  CALL FUNCTION 'Z_DADOS_EMPRESA_ADRC'
+    EXPORTING
+      i_bukrs = '1000'
+    IMPORTING
+      e_adrc  = adrc
+    EXCEPTIONS
+      OTHERS  = 1.
+  IF sy-subrc EQ 0.
+  ENDIF.
+
+ENDFORM.                    " SELECIONA_EMPRESA
+
+FORM user_command USING ucomm
+     LIKE sy-ucomm selfield TYPE slis_selfield.
+  DATA: vl_tcode        TYPE tcode,
+        vl_message(255) TYPE c,
+        vl_cont(30)     TYPE c.
+* Se clicou numa linha ou campo inválido ou se chegou até a rotina sem duplo clique, aborta o form
+  IF selfield-tabindex  IS INITIAL    OR     " Linha inválida
+     ucomm              NE '&IC1'.         " Não foi duplo-clique
+    EXIT.
+  ENDIF.
+
+  CASE ucomm.
+    WHEN '&IC1'.
+*     Leia a tabela do ALV, passando o nome da coluna clicada para o campo FIELDNAME da tabela SELFIELD
+      READ TABLE ti_imprimir INTO wa_imprimir INDEX selfield-tabindex.
+      CHECK sy-subrc = 0.
+
+      CASE selfield-fieldname.
+*       Cada WHEN terá o nome de cada coluna que contém o hotspot
+
+        WHEN  'ICONE'.
+          IF p_table EQ ''.
+            CALL FUNCTION 'DSYS_SHOW_FOR_F1HELP'
+              EXPORTING
+                dokclass         = 'RE'
+                doklangu         = sy-langu
+                dokname          = wa_imprimir-obj_name "sy-repid
+*               doktitle         = ' '
+*               hometext         = ' '
+*               OUTLINE          = ' '
+*               VIEWNAME         = 'STANDARD'
+*               Z_ORIGINAL_OUTLINE       = ' '
+*               CALLED_FROM_SO70 = ' '
+                short_text       = 'X'
+              EXCEPTIONS
+                class_unknown    = 1
+                object_not_found = 2
+                OTHERS           = 3.
+            IF sy-subrc <> 0.
+              MESSAGE i000 WITH 'O programa não tem documentação' text-004.
+*            MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+*                    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+            ENDIF.
+          ELSE.
+            MOVE wa_imprimir-tabname TO vp_tabname.
+            FIND 'LINK' IN wa_imprimir-tabname. " Tabela que não existe no banco de dados - Utilizada para ligação a outro sistema.
+
+            IF sy-subrc NE 0."wa_prog-tabclass EQ 'TRANSP'.
+
+              TRY.
+                  CALL FUNCTION 'DMC_COUNT_TABLE_ENTRIES'
+                    EXPORTING
+                      im_tabname     = vp_tabname
+                      im_exact_count = 'X'
+                    IMPORTING
+                      ex_count       = vp_contador.
+                  WRITE vp_contador TO vl_cont." CURRENCY 'BRL' DECIMALS 0.
+                  CONDENSE vl_cont.
+
+                  CONCATENATE vl_cont 'Registros'(m03) 'na tabela'(m04) vp_tabname '.' INTO vl_message
+                  SEPARATED BY space.
+
+                  MESSAGE i000 WITH vl_message.
+
+                CATCH cx_root."DBSQL_TABLE_UNKNOWN.
+              ENDTRY.
+            ELSE.
+              CLEAR: vp_tabname, vp_contador.
+              MESSAGE e000 WITH 'Tabela não existe no banco de dados'(m02).
+            ENDIF.
+          ENDIF.
+
+        WHEN 'OBJ_NAME'.
+          IF p_query EQ ' '.
+            IF NOT wa_imprimir-tcode IS INITIAL AND NOT wa_imprimir-tcode EQ 'ZPROG'.
+              CALL TRANSACTION wa_imprimir-tcode." AND SKIP FIRST SCREEN.
+            ELSE.
+              IF NOT wa_imprimir-obj_name EQ 'ZPROG'.
+                SET PARAMETER ID 'RID' FIELD wa_imprimir-obj_name.
+                CALL TRANSACTION 'SE38'.
+              ELSE.
+                MESSAGE i000 WITH 'Programa em execução'(pat).
+              ENDIF.
+            ENDIF.
+          ELSE.
+            CALL TRANSACTION wa_imprimir-obj_name." AND SKIP FIRST SCREEN.
+          ENDIF.
+
+        WHEN 'TCODE'.
+
+          IF NOT wa_imprimir-tcode IS INITIAL.
+            CALL TRANSACTION wa_imprimir-tcode.
+          ENDIF.
+
+        WHEN 'PROGNAME'.
+          IF p_query EQ 'X'.
+            IF NOT wa_imprimir-progname IS INITIAL.
+              SET PARAMETER ID 'RID' FIELD wa_imprimir-progname.
+              CALL TRANSACTION 'SE38'.
+            ENDIF.
+          ENDIF.
+
+        WHEN 'USERGROUP'.
+          IF p_query EQ 'X'.
+            MOVE wa_imprimir-obj_name TO vl_tcode.
+            CALL FUNCTION 'RS_TRANSACTION_SHOW'
+              EXPORTING
+                objectname       = vl_tcode
+                monitor_activate = 'X'
+              EXCEPTIONS
+                object_not_found = 1
+                OTHERS           = 2.
+            IF sy-subrc <> 0.
+* Implement suitable error handling here
+            ENDIF.
+          ENDIF.
+
+        WHEN 'DDTEXT'.
+          IF p_table EQ 'X'.
+            SET PARAMETER ID 'DTB' FIELD wa_imprimir-tabname.
+            CALL TRANSACTION 'SE16N'.
+          ENDIF.
+
+        WHEN 'TABNAME'.
+          IF p_table EQ 'X'.
+            SET PARAMETER ID 'DTB' FIELD wa_imprimir-tabname.
+            SET PARAMETER ID 'TBMA' FIELD 'X'.
+            CALL TRANSACTION 'SE11'.
+          ENDIF.
+
+        WHEN OTHERS.
+      ENDCASE.
+  ENDCASE.
+
+*=======================================================================
+* Eventos - Comandos do usuário (pressionamento de botões, por exemplo)
+*=======================================================================
+*****************************
+* Botões da lista principal *
+*****************************
+* Botões que irão gerar listas individuais em janelas
+  CLEAR ti_imprimir.
+  READ TABLE ti_imprimir INDEX selfield-tabindex.
+ENDFORM.                    "user_command
+
+FORM monta_alv .
+
+  CLEAR: ti_fieldcat, ti_sort.
+  REFRESH: ti_fieldcat, ti_sort.
+
+* Chama form que monta as colunas do ALV
+  IF p_prog EQ 'X'.
+    IF c_tcode EQ ' '.
+      PERFORM monta_catalogo USING:
+    '' '1' '' 'ICONE' '' '' '' '' '' '' '' '' text-i01 '' 'ICON' 'I' 'X' 0 '',
+    '' '2' '' 'OBJ_NAME' '' '' '' '' '' '' '' '' text-d01 '' '' '' '' 0 '',
+    '' '3' '' 'TEXT' '' '' '' '' '' '' '' '' text-d02 '' '' '' '' 0 '',
+    '' '4' '' 'AUTHOR' '' '' '' '' '' '' '' '' text-d03 '' '' '' '' 0 '',
+    '' '5' '' 'DEVCLASS' '' '' '' '' '' '' '' '' text-d04 '' '' '' '' 0 '',
+    '' '6' '' 'MASTERLANG' '' '' '' '' '' '' '' 'X' text-d05 '' '' '' '' 0 '',
+    '' '7' '' 'DDTEXT' '' '' '' '' '' '' '' '' text-d06 '' '' '' '' 0 '',
+    '' '8' '' 'ATEXT' '' '' '' '' '' '' '' '' text-d07 '' '' '' '' 0 '',
+    '' '9' '' 'CDAT' '' '' '' '' '' '' '' '' text-d08 '' '' '' '' 0 '',
+    '' '10' '' 'UNAM' '' '' '' '' '' '' '' '' text-d09 '' '' '' '' 0 '',
+    '' '11' '' 'UDAT' '' '' '' '' '' '' '' '' text-d10 '' '' '' '' 0 '',
+    '' '12' '' 'SRCSYSTEM' '' '' '' '' '' '' '' 'X' text-d11 '' '' '' '' 0 '',
+    '' '13' '' 'TCODE' '' '' '' '' '' '' '' '' text-d12 '' '' '' '' 0 '',
+    '' '14' '' 'DYPNO' '' '' '' '' '' '' '' 'X' text-d13 '' '' '' '' 0 '',
+    '' '15' '' 'SUBC' '' '' '' '' '' '' '' 'X' text-d06 '' '' '' '' 0 '',
+    '' '16' '' 'APPL' '' '' '' '' '' '' '' 'X' text-d07 '' '' '' '' 0 ''.
+    ELSE.
+      PERFORM monta_catalogo USING:
+  '' '1' '' 'ICONE' '' '' '' '' '' '' '' '' text-i01 '' 'ICON' 'I' 'X' 0 '',
+  '' '2' '' 'OBJ_NAME' '' '' '' '' '' '' '' '' text-d01 '' '' '' '' 0 '',
+  '' '3' '' 'TEXT' '' '' '' '' '' '' '' '' text-d02 '' '' '' '' 0 '',
+  '' '4' '' 'AUTHOR' '' '' '' '' '' '' '' '' text-d03 '' '' '' '' 0 '',
+  '' '5' '' 'DEVCLASS' '' '' '' '' '' '' '' '' text-d04 '' '' '' '' 0 '',
+  '' '6' '' 'MASTERLANG' '' '' '' '' '' '' '' 'X' text-d05 '' '' '' '' 0 '',
+  '' '7' '' 'DDTEXT' '' '' '' '' '' '' '' '' text-d06 '' '' '' '' 0 '',
+  '' '8' '' 'ATEXT' '' '' '' '' '' '' '' '' text-d07 '' '' '' '' 0 '',
+  '' '9' '' 'CDAT' '' '' '' '' '' '' '' '' text-d08 '' '' '' '' 0 '',
+  '' '10' '' 'UNAM' '' '' '' '' '' '' '' '' text-d09 '' '' '' '' 0 '',
+  '' '11' '' 'UDAT' '' '' '' '' '' '' '' '' text-d10 '' '' '' '' 0 '',
+  '' '12' '' 'SRCSYSTEM' '' '' '' '' '' '' '' 'X' text-d11 '' '' '' '' 0 '',
+  '' '13' '' 'TTEXT' '' '' '' '' '' '' '' 'X' text-d14 '' '' '' '' 0 '',
+  '' '14' '' 'DYPNO' '' '' '' '' '' '' '' 'X' text-d13 '' '' '' '' 0 '',
+  '' '15' '' 'SUBC' '' '' '' '' '' '' '' 'X' text-d06 '' '' '' '' 0 '',
+  '' '16' '' 'APPL' '' '' '' '' '' '' '' 'X' text-d07 '' '' '' '' 0 ''.
+    ENDIF.
+  ELSEIF p_query EQ 'X'.
+
+    PERFORM monta_catalogo USING:
+
+  '' '1' '' 'OBJ_NAME' '' '' '' '' '' '' '' '' text-d12 '' '' '' '' 0 '',
+  '' '2' '' 'TTEXT' '' '' '' '' '' '' '' '' text-d14 '' '' '' '' 0 '',
+  '' '3' '' 'AUTHOR' '' '' '' '' '' '' '' '' text-d03 '' '' '' '' 0 '',
+  '' '4' '' 'DEVCLASS' '' '' '' '' '' '' '' '' text-d04 '' '' '' '' 0 '',
+  '' '5' '' 'CREATED_ON' '' '' '' '' '' '' '' '' text-d08 '' '' '' '' 0 '',
+  '' '6' '' 'REPORTTYPE' '' '' '' '' '' '' '' '' text-d15 '' '' '' '' 0 '',
+  '' '7' '' 'REPORT' '' '' '' '' '' '' '' '' text-d16 '' '' '' '' 0 '',
+  '' '8' '' 'EXTDREPORT' '' '' '' '' '' '' '' '' text-d17 '' '' '' '' 0 '',
+  '' '9' '' 'VARIANT' '' '' '' '' '' '' '' '' text-d18 '' '' '' '' 0 '',
+  '' '10' '' 'USERGROUP' '' '' '' '' '' '' '' '' text-d19 '' '' '' '' 0 '',
+  '' '11' '' 'WORKSPACE' '' '' '' '' '' '' '' '' text-d20 '' '' '' '' 0 '',
+  '' '12' '' 'QUERY' '' '' '' '' '' '' '' '' text-d21 '' '' '' '' 0 '',
+  '' '13' '' 'PROGNAME' '' '' '' '' '' '' '' '' text-d22 '' '' '' '' 0 ''.
+
+  ELSEIF p_table EQ 'X'.
+    IF c_cont EQ 'X'.
+      PERFORM monta_catalogo USING:
+         '' '1' '' 'ICONE' '' '' '' '' '' '' '' '' text-i02 '' 'ICON' 'I' 'X' 0 ''.
+    ENDIF.
+    PERFORM monta_catalogo USING:
+    '' '2' '' 'TABNAME' '' '' '' '' '' '' '' '' text-d23 '' '' '' '' 0 '',
+    '' '3' '' 'DDTEXT' '' '' '' '' '' '' '' '' text-d24 '' '' '' '' 0 '',
+    '' '4' '' 'MASTERLANG' '' '' '' '' '' '' '' 'X' text-d25 '' '' '' '' 0 '',
+    '' '5' '' 'TABCLASS' '' '' '' '' '' '' '' '' text-d26 '' '' '' '' 0 '',
+    '' '6' '' 'AS4USER' '' '' '' '' '' '' '' '' text-d27 '' '' '' '' 0 '',
+    '' '7' '' 'AS4DATE' '' '' '' '' '' '' '' '' text-d28 '' '' '' '' 0 '',
+    '' '8' '' 'AS4TIME' '' '' '' '' '' '' '' '' text-d29 '' '' '' '' 0 '',
+    '' '9' '' 'CONTFLAG' '' '' '' '' '' '' '' 'X' text-d30 '' '' '' '' 0 ''.
+    IF c_cont EQ ' '.
+      PERFORM monta_catalogo USING:
+         '' '10' '' 'CONTADOR' '' '' '' '' '' '' '' '' text-d31 '' '' '' '' 0 ''.
+    ENDIF.
+
+  ENDIF.
+* Chama form que monta a ordenação do ALV
+
+  IF p_table EQ 'X'.
+    PERFORM monta_ordenacao USING:
+    1 'TABNAME' '' '' '' ''.
+  ELSE.
+    PERFORM monta_ordenacao USING:
+      1 'OBJ_NAME' '' '' '' ''.
+*    2 'CDAT' '' '' '' ''.
+*    3 'APPL' '' '' '' ''.
+  ENDIF.
+ENDFORM.
+
+FORM alv_f4 .
+
+  wa_variant-report = g_repid.
+  CALL FUNCTION 'REUSE_ALV_VARIANT_F4'
+    EXPORTING
+      is_variant = wa_variant
+      i_save     = 'A'
+    IMPORTING
+      es_variant = wa_variant
+    EXCEPTIONS
+      not_found  = 2.
+
+  IF sy-subrc = 2.
+    MESSAGE ID sy-msgid TYPE 'S' NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ELSE.
+    p_varia = wa_variant-variant.
+  ENDIF.
+
+ENDFORM.
+
+FORM alv_init .
+
+  CLEAR: wa_variant.
+  g_repid = sy-repid.
+  wa_variant-report = g_repid.
+  CALL FUNCTION 'REUSE_ALV_VARIANT_DEFAULT_GET'
+    EXPORTING
+      i_save     = 'A'
+    CHANGING
+      cs_variant = wa_variant
+    EXCEPTIONS
+      not_found  = 2.
+
+  IF sy-subrc = 0.
+    p_varia = wa_variant-variant.
+  ENDIF.
+
+ENDFORM.
+
+FORM layout_init CHANGING p_wa_layout LIKE wa_layout.
+
+  p_wa_layout-detail_popup      = 'X'.
+  p_wa_layout-colwidth_optimize = 'X'.
+
+ENDFORM.
+
+FORM seleciona_dados.
+
+*Função para mostrar indicador de progresso de execução da transação
+  CALL FUNCTION 'SAPGUI_PROGRESS_INDICATOR'
+    EXPORTING
+      percentage = 5
+      text       = 'Aguarde...'.
+
+  IF p_prog EQ 'X' OR p_incl EQ 'X'." programas ou includes Z
+
+    SELECT tadir~obj_name tadir~srcsystem tadir~author tadir~devclass tadir~masterlang
+           trdir~subc trdir~appl trdir~cdat trdir~unam trdir~udat trdirt~text
+
+       INTO CORRESPONDING FIELDS OF ti_prog
+     FROM ( tadir
+            INNER JOIN trdir
+            ON  tadir~obj_name = trdir~name
+
+            INNER JOIN trdirt
+            ON  tadir~obj_name = trdirt~name
+          )
+
+          WHERE tadir~pgmid EQ 'R3TR'
+            AND tadir~object EQ 'PROG'
+            AND tadir~obj_name IN s_nam
+            AND tadir~author IN s_author
+            AND tadir~devclass IN  s_devcl.
+      APPEND ti_prog.
+    ENDSELECT.
+
+    DELETE ADJACENT DUPLICATES FROM ti_prog COMPARING ALL FIELDS.
+    PERFORM personalizar.
+
+  ENDIF.
+
+  IF p_query EQ 'X'. " Se for programa abap query.
+
+
+    DATA: it_report TYPE srepovari,
+          q_struct  LIKE srt_query,
+          v_report  LIKE srt_tcvar.
+
+    DATA: vl_tcode    TYPE tcode,
+          vl_progname TYPE aqadef-pgname.
+
+    CLEAR ti_prog.
+    SELECT tadir~obj_name tadir~srcsystem tadir~author tadir~devclass tadir~masterlang tadir~created_on
+           tstcv~ttext "trdir~subc trdir~appl trdir~cdat trdir~unam trdir~udat
+   INTO CORRESPONDING FIELDS OF ti_prog
+   FROM ( tadir
+        INNER JOIN tstcv
+        ON  tadir~obj_name = tstcv~tcode
+        )
+
+  WHERE tadir~pgmid EQ 'R3TR'
+    AND tadir~object EQ 'TRAN'
+    AND tadir~obj_name IN s_nam
+    AND tadir~author IN s_author
+    AND tstcv~sprsl EQ sy-langu
+    AND tadir~devclass IN  s_devcl.
+
+      APPEND ti_prog.
+    ENDSELECT.
+
+
+    LOOP   AT   ti_prog INTO wa_prog.
+
+      MOVE wa_prog-obj_name TO vl_tcode.
+      CALL FUNCTION 'SRT_GET_REPORT_OF_TCODE' "Função para obter a área de trabalho, grupo de usuários e query
+        EXPORTING
+          tcode                 = vl_tcode
+        IMPORTING
+          report_structure      = it_report
+          query_structure       = q_struct
+          tcvar_structure       = v_report
+        EXCEPTIONS
+          no_report_transaction = 1
+          OTHERS                = 2.
+
+      IF sy-subrc EQ 0.
+        CALL FUNCTION 'RSAQ_REPORT_NAME' "Função para obter o nome do programa abap query
+          EXPORTING
+            workspace  = q_struct-workspace
+            usergroup  = q_struct-usergroup
+            query      = q_struct-query
+          IMPORTING
+            reportname = vl_progname.
+
+        IF q_struct-usergroup IS INITIAL.
+          MOVE it_report-report   TO wa_prog-progname.
+        ELSE.
+          MOVE vl_progname         TO wa_prog-progname.
+        ENDIF.
+
+        MOVE:it_report-reporttype TO wa_prog-reporttype,
+            it_report-report      TO wa_prog-report,
+            it_report-extdreport  TO wa_prog-extdreport,
+            it_report-variant     TO wa_prog-variant,
+            q_struct-usergroup    TO wa_prog-usergroup,
+            q_struct-workspace    TO wa_prog-workspace,
+            q_struct-query        TO wa_prog-query.
+
+      ENDIF.
+      MODIFY ti_prog INDEX sy-tabix FROM wa_prog TRANSPORTING reporttype report extdreport variant usergroup workspace query progname.
+    ENDLOOP.
+  ENDIF.
+  IF p_table EQ 'X'. " Se for tabela
+
+    CLEAR: ti_prog, wa_prog.
+    REFRESH ti_prog.
+    SELECT dd02l~tabname dd02l~tabclass dd02l~as4user dd02l~as4date dd02l~as4time dd02l~masterlang dd02l~contflag
+           dd02t~ddtext
+       INTO CORRESPONDING FIELDS OF ti_prog
+       FROM ( dd02l
+            INNER JOIN dd02t
+            ON  dd02l~tabname = dd02t~tabname
+            )
+
+      WHERE dd02l~tabname IN s_table
+        AND dd02l~tabclass IN  s_tabcl
+        AND dd02t~ddlanguage EQ sy-langu.
+      APPEND ti_prog.
+    ENDSELECT.
+
+* Número de registros da tabela
+    IF c_cont EQ ''.
+      LOOP AT ti_prog INTO wa_prog.
+        MOVE wa_prog-tabname TO vp_tabname.
+
+        FIND 'LINK' IN wa_prog-tabname. " Tabela que não existe no banco de dados - Utilizada para ligação a outro sistema.
+
+        IF sy-subrc NE 0."wa_prog-tabclass EQ 'TRANSP'.
+          TRY.
+              CALL FUNCTION 'DMC_COUNT_TABLE_ENTRIES'
+                EXPORTING
+                  im_tabname     = vp_tabname
+                  im_exact_count = 'X'
+                IMPORTING
+                  ex_count       = vp_contador.
+              MOVE vp_contador TO wa_prog-contador.
+              MODIFY ti_prog INDEX sy-tabix FROM wa_prog TRANSPORTING contador.
+            CATCH cx_root."DBSQL_TABLE_UNKNOWN.
+          ENDTRY.
+        ELSE.
+          MOVE 0 TO wa_prog-contador.
+          MODIFY ti_prog INDEX sy-tabix FROM wa_prog TRANSPORTING contador.
+        ENDIF.
+      ENDLOOP.
+    ELSEIF c_cont EQ 'X'. " Inserir ícone caso não seja exibido o número de registros da tabela
+      CLEAR wa_prog.
+      LOOP AT ti_prog INTO wa_prog.
+        wa_prog-icone = '@9M@'. "green traffic light
+        MOVE wa_prog-icone TO ti_prog-icone.
+        MODIFY ti_prog INDEX sy-tabix FROM wa_prog TRANSPORTING icone.
+      ENDLOOP.
+    ENDIF.
+  ENDIF.
+
+  MOVE-CORRESPONDING ti_prog[] TO ti_imprimir[].
+ENDFORM.                    " SELECIONA_DADOS
+*&---------------------------------------------------------------------*
+*&      Form  SETAR_CORES
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM setar_cores .
+
+  DATA: wa_cellcolor TYPE lvc_s_scol.
+  DATA: ld_index TYPE sy-tabix.
+
+*Este campo pode ser preenchido com os seguintes valores:
+  LOOP AT ti_imprimir INTO wa_imprimir.
+    ld_index = sy-tabix.
+*    IF wa_imprimir-menge LT 0.
+*      wa_cellcolor-fname = 'MENGE'.
+*      wa_cellcolor-color-col = 6.
+*      wa_cellcolor-color-int = '0'.
+*      wa_cellcolor-color-inv = '0'.
+*      APPEND wa_cellcolor TO wa_imprimir-cellcolor.
+*      MODIFY ti_imprimir FROM wa_imprimir INDEX ld_index TRANSPORTING cellcolor.
+*    ENDIF.
+*    IF wa_imprimir-tipo = 'Consumo'.
+*      wa_cellcolor-fname = 'TIPO'.
+*      wa_cellcolor-color-col = 1.
+*      wa_cellcolor-color-int = '0'.
+*      wa_cellcolor-color-inv = '0'.
+*      APPEND wa_cellcolor TO wa_imprimir-cellcolor.
+*      MODIFY ti_imprimir FROM wa_imprimir INDEX ld_index TRANSPORTING cellcolor.
+*    ELSEIF wa_imprimir-tipo = 'Gerado'.
+*      wa_cellcolor-fname = 'TIPO'.
+*      wa_cellcolor-color-col = 5.
+*      wa_cellcolor-color-int = '1'.
+*      wa_cellcolor-color-inv = '0'.
+*      APPEND wa_cellcolor TO wa_imprimir-cellcolor.
+*      MODIFY ti_imprimir FROM wa_imprimir INDEX ld_index TRANSPORTING cellcolor..
+*    ELSEIF wa_imprimir-tipo = 'Produzido'.
+*      wa_cellcolor-fname = 'TIPO'.
+*      wa_cellcolor-color-col = 7.
+*      wa_cellcolor-color-int = '0'.
+*      wa_cellcolor-color-inv = '0'.
+*      APPEND wa_cellcolor TO wa_imprimir-cellcolor.
+*      MODIFY ti_imprimir FROM wa_imprimir INDEX ld_index TRANSPORTING cellcolor.
+*    ENDIF.
+  ENDLOOP.
+
+ENDFORM." SETAR CORES
+*&---------------------------------------------------------------------*
+*&      Form  PERSONALIZAR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM personalizar .
+* Verificar se é include
+  IF p_incl EQ ' '. "Caso não esteja selecionado include
+    LOOP AT ti_prog INTO wa_prog.
+      IF wa_prog-subc EQ 'I'.
+        DELETE ti_prog.
+      ENDIF.
+    ENDLOOP.
+  ELSE.
+* Se for include
+    LOOP AT ti_prog INTO wa_prog.
+      IF wa_prog-subc NE 'I'.
+        DELETE ti_prog.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+* Ignorar objeto local
+  IF c_ignl EQ 'X'.
+    LOOP AT ti_prog INTO wa_prog.
+      IF wa_prog-devclass EQ '$TMP'.
+        DELETE ti_prog.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+* Mostrar somente objetos locais.
+  IF c_objl EQ 'X'.
+    LOOP AT ti_prog INTO wa_prog.
+      IF wa_prog-devclass NE '$TMP'.
+        DELETE ti_prog.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+* Buscar nome do tipo de programa
+  CLEAR wa_prog.
+  LOOP AT ti_prog INTO wa_prog.
+    SELECT ddtext
+     INTO wa_prog-ddtext
+      FROM dd07t
+      WHERE domname EQ 'SUBC'
+        AND domvalue_l EQ wa_prog-subc
+        AND ddlanguage EQ 'PT'.
+      MOVE wa_prog-ddtext TO ti_prog-ddtext.
+      MODIFY ti_prog INDEX sy-tabix FROM wa_prog TRANSPORTING ddtext.
+    ENDSELECT.
+  ENDLOOP.
+
+* Buscar some da aplicação
+  CLEAR wa_prog.
+  LOOP AT ti_prog INTO wa_prog.
+    SELECT atext
+       INTO wa_prog-atext
+        FROM taplt
+        WHERE appl EQ wa_prog-appl
+          AND sprsl EQ 'PT'.
+      MOVE wa_prog-atext TO ti_prog-atext.
+      MODIFY ti_prog INDEX sy-tabix FROM wa_prog TRANSPORTING atext.
+    ENDSELECT.
+  ENDLOOP.
+
+* Buscar transação
+  CLEAR wa_prog.
+  LOOP AT ti_prog INTO wa_prog.
+    SELECT tcode dypno
+       INTO CORRESPONDING FIELDS OF wa_prog
+        FROM tstc
+        WHERE pgmna EQ wa_prog-obj_name.
+
+      MOVE wa_prog-tcode TO ti_prog-tcode.
+      MOVE wa_prog-dypno TO ti_prog-dypno.
+
+      MODIFY ti_prog INDEX sy-tabix FROM wa_prog TRANSPORTING tcode dypno.
+    ENDSELECT.
+  ENDLOOP.
+
+* Inserir ícone
+  CLEAR wa_prog.
+  LOOP AT ti_prog INTO wa_prog.
+    wa_prog-icone = '@0S@'. "green traffic light
+    MOVE wa_prog-icone TO ti_prog-icone.
+    MODIFY ti_prog INDEX sy-tabix FROM wa_prog TRANSPORTING icone.
+  ENDLOOP.
+ENDFORM.

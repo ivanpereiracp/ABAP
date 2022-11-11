@@ -1,0 +1,48 @@
+*----------------------------------------------------------------------*
+*   INCLUDE Z_REL_ALV
+*
+*----------------------------------------------------------------------*
+"- Includes:
+include <icon>.
+include <symbol>.
+
+
+"- Tipos de dados ------------------------------------------------------
+type-pools:
+  kkblo,    "Tipos para lista especial
+  slis.
+
+
+constants:
+gc_formname_top_of_page type slis_formname value 'TOP_OF_PAGE'.
+
+"- Variáveis globais ---------------------------------------------------
+data:
+  v_repid like sy-repid,
+  g_save type c,
+  g_variant type disvariant,
+  feld(10)   type c,
+  exit.
+
+data: afield type kkblo_fieldcat.
+data: colinfo type kkblo_specialcol.
+data: layout type kkblo_layout.
+data: header type kkblo_listheader.
+
+data: i_fieldcat type kkblo_t_fieldcat.
+data: i_fieldcat_aux type kkblo_t_fieldcat   .
+data: l_fcat type slis_t_fieldcat_alv.
+data: l_spg type slis_t_sp_group_alv.
+data: l_lay type slis_layout_alv.
+data: it_header type kkblo_t_listheader.
+
+data: gt_list_top_of_page type slis_t_listheader,
+      gt_events   type slis_t_event,
+      gs_print    type slis_print_alv,
+      gs_fieldcat type slis_t_fieldcat_alv,
+      gt_sp_group type slis_t_sp_group_alv,
+      gt_layout   type slis_layout_alv.
+
+data: i_sort type slis_t_sortinfo_alv.
+data: w_sort type slis_sortinfo_alv  .
+
