@@ -2,25 +2,24 @@
 * INCLUDE ZI_ALVFORM *
 *----------------------------------------------------------------------*
 ************************************************************************
-**** pedido IGUA«U
 **** PROGRAMA: Include form's para listas ALV *
-**** AUTOR:    Ricardo Fachin *
+**** AUTOR:    iVAN PEREIRA
 **** DATA:     13/10/2003 *
 ************************************************************************
 
 *----------------------------------------------------------------------*
-*** Padr„o para nomenclatura
+*** Padr√£o para nomenclatura
 *----------------------------------------------------------------------*
 
-*Vari·veis locais
+*Vari√°veis locais
 *Tabelas internas:  ti_<nome>
-*Vari·vei gerais:   vp_<nome>
-*Vari·veis de subrotinas
+*Vari√°vei gerais:   vp_<nome>
+*Vari√°veis de subrotinas
 
 *form carrega_confirmacoes tables ft_<nome> structure mtreesnode
 * using fp_<nome>
 * changing fp_<nome>.
-*O fp_ serve para identificar que È uma vari·vel de subrotina....
+*O fp_ serve para identificar que √© uma vari√°vel de subrotina....
 
 *----------------------------------------------------------------------*
 *** Types
@@ -118,7 +117,7 @@ ENDFORM. " VALUE_REQUEST_VARIANT
 *&---------------------------------------------------------------------*
 *&      Form  check_variant_existence
 *&---------------------------------------------------------------------*
-* VERIFICA SE A VARIANTE DE EXIBI«√O (LAYOUT) INFORMADA EXISTE
+* VERIFICA SE A VARIANTE DE EXIBI√á√ÉO (LAYOUT) INFORMADA EXISTE
 *----------------------------------------------------------------------*
 * --> P_SAVE
 * <-- P_WA_VARIANT
@@ -160,7 +159,7 @@ FORM monta_ordenacao USING
      p_fieldname TYPE slis_sortinfo_alv-fieldname
      p_ordem     TYPE c
      p_subtot    TYPE slis_sortinfo_alv-subtot
-* Para quebrar a p·gina, preencha [P_GROUP] com '*'
+* Para quebrar a p√°gina, preencha [P_GROUP] com '*'
      p_group     TYPE slis_sortinfo_alv-group
      p_expa      TYPE slis_sortinfo_alv-expa.
 
@@ -242,7 +241,7 @@ FORM monta_catalogo USING
 
   ELSEIF p_datatype EQ 'I/O'.
     ti_fieldcat-input     = 'X'.
-    ti_fieldcat-edit      = 'X'. " P/ediÁ„o campo ALV_GRID-RVP 14.06.06
+    ti_fieldcat-edit      = 'X'. " P/edi√ß√£o campo ALV_GRID-RVP 14.06.06
 
   ELSE.
     ti_fieldcat-datatype  = p_datatype.
@@ -254,16 +253,14 @@ FORM monta_catalogo USING
     ti_fieldcat-ddictxt = 'M'.
   ENDIF.
 
-*ALTER[ ALJ 20.05.2013 Nota: 200222240
 *--------------------------------------------------------------------*
 * incluido este campo porque, quando o conteudo de um campo
-* era minusculo, o filtro n„o funcionava, porque no filtro o argumento
+* era minusculo, o filtro n√£o funcionava, porque no filtro o argumento
 * de pesquisa era convertido para maiusculo, o que fizia com que o
-* registro n„o fosse selecionado.
+* registro n√£o fosse selecionado.
 
   ti_fieldcat-lowercase = 'X'.
 *--------------------------------------------------------------------*
-*ALTER] ALJ 20.05.2013 Nota: 200222240
 
   APPEND ti_fieldcat.
 
